@@ -1,0 +1,24 @@
+---
+title: "Processing HiChIP Data at OMRF"
+author: "Caleb Lareau"
+date: "`r Sys.Date()`"
+output:
+  rmarkdown::pdf_document:
+    fig_caption: yes
+vignette: >
+  %\VignetteIndexEntry{HiChIP}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+# About 
+
+Welcome to the wonderful world of HiChIP preprocessing! This vignette is designed to walk through the steps needed to process HiChIP datasets on the OMRF Ash server. Before running this guide, make sure you have the latest available version of the vignette [available here](https://github.com/caleblareau/omrf_hichip/raw/master/vignette/HiChIP_Analysis.pdf). If you have any questions/errors, feel free to contact [Caleb Lareau](caleblareau@g.harvard.edu). \newline \newline
+The current state of HiChIP preprocessing is an *ad hoc* melting of several tools original designed for ChIA_PET and HiC, including [HiC Pro](https://github.com/nservant/HiC-Pro), [ChIAPET2](https://github.com/GuipengLi/ChIA-PET2), and some in house scripts for QC metrics. One hopes that these will be better packaged together one day, but the current state necessitates a spaghetti of shell scripting and/or sequential commands. Thus, check back in case the process gets streamlined. 
+
+# Preprocessing with Hi-C Pro
+Hi-C Pro is super useful but admittedly a pain to get working correctly. 
+
+# Calling Loops
+
+# QC Report
