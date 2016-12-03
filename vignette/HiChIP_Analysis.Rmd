@@ -1,7 +1,7 @@
 ---
 title: "Processing HiChIP Data at OMRF"
 author: "Caleb Lareau"
-date: "`r Sys.Date()`"
+date: "Last updated `r Sys.Date()`"
 output:
   rmarkdown::pdf_document:
     fig_caption: yes
@@ -13,12 +13,90 @@ vignette: >
 
 # About 
 
-Welcome to the wonderful world of HiChIP preprocessing! This vignette is designed to walk through the steps needed to process HiChIP datasets on the OMRF Ash server. Before running this guide, make sure you have the latest available version of the vignette [available here](https://github.com/caleblareau/omrf_hichip/raw/master/vignette/HiChIP_Analysis.pdf). If you have any questions/errors, feel free to contact [Caleb Lareau](caleblareau@g.harvard.edu). \newline \newline
-The current state of HiChIP preprocessing is an *ad hoc* melting of several tools original designed for ChIA_PET and HiC, including [HiC Pro](https://github.com/nservant/HiC-Pro), [ChIAPET2](https://github.com/GuipengLi/ChIA-PET2), and some in house scripts for QC metrics. One hopes that these will be better packaged together one day, but the current state necessitates a spaghetti of shell scripting and/or sequential commands. Thus, check back in case the process gets streamlined. 
+Welcome to the wonderful world of HiChIP preprocessing! This vignette is designed to walk through the steps needed to process HiChIP datasets on the OMRF `ash` server. Before running this guide, make sure you have the latest available version of the vignette [available here](https://github.com/caleblareau/omrf_hichip/raw/master/vignette/HiChIP_Analysis.pdf). If you have any questions/errors, feel free to contact [Caleb Lareau](caleblareau@g.harvard.edu). \newline \newline
+The current state of HiChIP preprocessing is an *ad hoc* melting of several tools original designed for ChIAPET and HiC, including [HiC Pro](https://github.com/nservant/HiC-Pro), [ChIAPET2](https://github.com/GuipengLi/ChIA-PET2), and some in house scripts for QC metrics. One hopes that these will be better packaged together one day, but the current state necessitates a spaghetti of shell scripting and/or sequential commands. Thus, check back in case the process gets streamlined. 
 
-# Preprocessing with Hi-C Pro
-Hi-C Pro is super useful but admittedly a pain to get working correctly. 
+# Alignment with Hi-C Pro/Bowtie2
+Hi-C Pro is super useful but admittedly a pain to get working correctly. Here's a sample execution. First, load the module. 
+
+```{r, eval=FALSE}
+module load hic-pro
+```
+
+Next, navigate to a directory where a configuration file is present as well as the sample `.fastq` files are contained in a folder hierarchy. [Here is an example configuration file](https://raw.githubusercontent.com/caleblareau/omrf_hichip/master/config-hicpro-mboi-ext12.txt) for the MboI enzyme digestion aligned to hg19 with file extensions `*_1.fastq, *_2.fastq`. Your working directory should look something like this--
+
+```{r, eval=FALSE}
+fastq/
+|-- example
+|  |-- exp_1.fastq.gz
+|  |-- exp_2.fastq.gz
+
+``` 
+
+Hi-C Pro can run multiple samples at once with multiple `.fastq` files each as long as 1) each sample has it's own directory and 2) the file naming convention is consistent (_i.e._ `_1.fastq, _2.fastq`). Files can be `gzipped` or not; it doesn't matter. Okay, so now we run the first Hi-C Pro command to set up our analyses. 
+
+```{r, eval=FALSE}
+HiC-Pro -i fastq -c config-hicpro-mboi-ext12.txt -o output -p
+
+``` 
+
+The `-i` flag specifies the directory that contains the per-sample directories; the `-c` flag specifies the configuration file; `-o` flag creates an output directory for everything Hi-C Pro related; and the `-p` flag ensures allows the execution to be performed on the server rather than the session. You should see some message about qsub'ing some shell scripts if your configuration file took. Otherwise, you may need to edit the file specifications. 
+
+
+
+```{r, eval=FALSE}
+cd output
+```
+
+You should see two shell scripts, `HiCPro_step1_hic.sh` and `HiCPro_step2_hic.sh`. 
+
+```{r, eval=FALSE}
+1) EDIT the -M command with your username to get jobs
+2) DELETE -l h_rt= command line
+```
+
+```{r, eval=FALSE}
+qsub HiCPro_step1_hic.sh
+```
+
+
+# Creating Hi-C Output
+While I would argue that really useful output of HiChIP are loop calls, one may be interested in the Hi-C heatmap. To get this, we need to run Step 2 of HiC-Pro, which should be super simple if you've made it this far. Simply 1) make the same modifications to `HiCPro_step2_hic.sh` as above and 2) execute `qsub HiCPro_step2_hic.sh` to get ordinal Hi-C output. 
 
 # Calling Loops
+
+
+```{r, eval=FALSE}
+module load samtools
+samtools view -o exp_1.sam exp_1.hg19.bwt2merged.bam
+samtools view -o exp_2.sam exp_2.hg19.bwt2merged.bam
+```
+
+
+```{r, eval=FALSE}
+module load chia-pet2
+buildBedpe exp_1.sam exp_2.sam exp.bedpe 30 1 0
+removeDup exp.bedpe exp_c.bedpe 1
+buildTagAlign exp_c.bedpe exp.tag.bed
+```
+
+```{r, eval=FALSE}
+module load macs2
+macs2 callpeak -t exp.tag.bed -g hs -f BED -n exp -q 0.10
+```
+
+```{r, eval=FALSE}
+module load bedtools
+awk '{print $1"\t"$2"\t"$3"\t"$4}' exp_peaks.narrowPeak | bedtools sort |
+  bedtools slop -g /usr/local/analysis/hic-pro/2.7.8/annotation/chrom_hg19.sizes -b 1000 |
+  mergeBed -d 1000 > slopPeak.bed
+pairToBed -a exp_c.bedpe -b slopPeak.bed -type both > exp.tmp.bedpe
+```
+
+Download the [filtBedPe.py](https://raw.githubusercontent.com/caleblareau/omrf_hichip/master/filtBedPe.py) file and execute 
+
+```{r, eval=FALSE}
+python filtBedPe.py -input exp.tmp.bedpe -prefix exp -mindist 5000
+```
 
 # QC Report

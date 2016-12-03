@@ -1,0 +1,7 @@
+out/bowtie_results/bwt2/sample1
+
+HiC-Pro -i fastq/ -o out -c config-hicpro-mboi-ext12.txt -p 
+
+** Need MboI file in annotation
+
+HiC-Pro -i small_hichip/ -o out -c config-hicpro-mboi-ext12.txt -p
